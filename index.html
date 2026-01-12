@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Raid Architect Pro - UX Edition</title>
+    <title>Raid Architect Pro - Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
@@ -24,7 +24,7 @@
             <header class="mb-10 bg-slate-900/80 backdrop-blur-xl p-6 rounded-3xl border border-white/10 flex flex-wrap gap-4 items-center justify-between shadow-2xl sticky top-4 z-[100]">
                 <div class="flex flex-col">
                     <h1 class="text-xl font-black italic tracking-tighter">RAID <span class="text-blue-500">ARCHITECT</span></h1>
-                    <input type="text" id="raidName" placeholder="Raid Name..." onfocus="moveCursorToEnd(this)" class="mt-2 bg-blue-900/20 border-blue-500/30 text-blue-400 font-bold">
+                    <input type="text" id="raidName" placeholder="Raid Name..." oninput="triggerAutoSave()" onfocus="moveCursorToEnd(this)" class="mt-2 bg-blue-900/20 border-blue-500/30 text-blue-400 font-bold">
                 </div>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="addWidget('sp')" class="btn-action text-blue-400 px-3 py-2 rounded-xl font-bold text-xs">+ PLAYER</button>
@@ -61,7 +61,12 @@
     </div>
 
     <script>
-        // UX Helper: Setzt Cursor ans Ende
+        let autoSaveTimeout;
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(saveToLocalStorage, 1000);
+        }
+
         function moveCursorToEnd(el) {
             setTimeout(() => {
                 const len = el.value.length;
@@ -82,8 +87,10 @@
         const SPECIAL_PSPS = ["Ragnar", "Lucy", "Dog", "Jinn"];
 
         let widgetCount = 0;
-        [document.getElementById('col-1'), document.getElementById('col-2')].forEach(el => {
-            new Sortable(el, { group: 'shared', animation: 150 });
+        const col1 = document.getElementById('col-1');
+        const col2 = document.getElementById('col-2');
+        [col1, col2].forEach(el => {
+            new Sortable(el, { group: 'shared', animation: 150, onEnd: triggerAutoSave });
         });
 
         function updateGlobalPlayers() {
@@ -92,11 +99,12 @@
                 const current = select.value || select.dataset.selected;
                 select.innerHTML = '<option value="">Spieler...</option>' + names.map(n => `<option value="${n}" ${current === n ? 'selected' : ''}>${n}</option>`).join('');
             });
+            triggerAutoSave();
         }
 
         function addWidget(type, title) {
             widgetCount++;
-            const col = document.getElementById(widgetCount % 2 === 0 ? 'col-2' : 'col-1');
+            const col = widgetCount % 2 === 0 ? col2 : col1;
             const card = document.createElement('div');
             card.className = 'builder-card relative mb-6';
             card.dataset.type = type;
@@ -104,18 +112,19 @@
             let colorClass = type === 'psp' ? 'text-rose-400' : type === 'assign' ? 'text-emerald-400' : type === 'special' ? 'text-purple-400' : 'text-blue-400';
             let displayTitle = title || (type === 'sp' ? 'PLAYER GROUP' : type === 'assign' ? 'ASSIGN' : type.toUpperCase());
             
-            card.innerHTML = `<div class="flex justify-between items-center mb-4"><input class="widget-title ${colorClass}" value="${displayTitle}" onfocus="moveCursorToEnd(this)"><button onclick="this.closest('.builder-card').remove(); updateGlobalPlayers();" class="text-slate-600 hover:text-red-500">✕</button></div>`;
+            card.innerHTML = `<div class="flex justify-between items-center mb-4"><input class="widget-title ${colorClass}" value="${displayTitle}" oninput="triggerAutoSave()" onfocus="moveCursorToEnd(this)"><button onclick="this.closest('.builder-card').remove(); updateGlobalPlayers();" class="text-slate-600 hover:text-red-500">✕</button></div>`;
             
-            if(type === 'sp') card.innerHTML += `<div class="list space-y-3"></div><button onclick="addSPRow('${card.id}')" class="text-[10px] mt-4 text-blue-400 font-bold">+ SPIELER</button>`;
+            if(type === 'sp') card.innerHTML += `<div class="list space-y-3"></div><button onclick="addSPRow('${card.id}')" class="text-[10px] mt-4 text-blue-400 font-bold">+ PLAYER</button>`;
             else if(type === 'psp') card.innerHTML += `<div class="cats space-y-4"></div>`;
-            else if(type === 'special') card.innerHTML += `<div class="list space-y-2"></div><button onclick="addSpecialSlot('${card.id}')" class="text-[10px] mt-4 text-purple-400 font-bold">+ ROLLE</button>`;
-            else card.innerHTML += `<div class="list space-y-2"></div><button onclick="addAssignRow('${card.id}')" class="text-[10px] mt-4 text-emerald-400 font-bold">+ AUFGABE</button>`;
+            else if(type === 'special') card.innerHTML += `<div class="list space-y-2"></div><button onclick="addSpecialSlot('${card.id}')" class="text-[10px] mt-4 text-purple-400 font-bold">+ ROLE</button>`;
+            else card.innerHTML += `<div class="list space-y-2"></div><button onclick="addAssignRow('${card.id}')" class="text-[10px] mt-4 text-emerald-400 font-bold">+ ASSIGN</button>`;
             
             col.appendChild(card);
             if(type === 'psp') {
                 PSP_CATEGORIES.forEach(c => createPspSubCategory(card.id, c));
                 createPspSubCategory(card.id, "Spezial", true);
             }
+            triggerAutoSave();
             return card.id;
         }
 
@@ -132,7 +141,7 @@
             let opts = ""; for(let g in SP_GROUPS) { opts += `<optgroup label="${g}">`; for(let n in SP_GROUPS[g]) opts += `<option value="${SP_GROUPS[g][n]}" ${SP_GROUPS[g][n] === spId ? 'selected' : ''}>${n}</option>`; opts += `</optgroup>`; }
             row.innerHTML = `
                 <button onclick="this.parentElement.remove(); updateGlobalPlayers();" class="text-slate-600">✕</button>
-                <select class="sp-select w-24 text-xs" onchange="const img=this.nextElementSibling; img.src=getIconUrl(this.value);">${opts}</select>
+                <select class="sp-select w-24 text-xs" onchange="const img=this.nextElementSibling; img.src=getIconUrl(this.value); triggerAutoSave();">${opts}</select>
                 <img src="${getIconUrl(spId)}" class="sp-icon" onerror="this.style.opacity='0.3'">
                 <input type="text" class="player-name-input flex-grow" oninput="updateGlobalPlayers()" onfocus="moveCursorToEnd(this)" placeholder="Name" value="${name}">`;
             document.getElementById(wId).querySelector('.list').appendChild(row);
@@ -141,30 +150,29 @@
 
         function addPSPRow(wId, cat, isSpecial = false, pName = "", specificPsp = "") {
             const row = document.createElement('div'); row.className = 'flex gap-2 items-center row-item';
-            let label = isSpecial ? `<select class="psp-type-select w-24 bg-slate-800 text-xs">${SPECIAL_PSPS.map(p => `<option value="${p}" ${specificPsp === p ? 'selected' : ''}>${p}</option>`).join('')}</select>` : `<span class="text-[11px] w-24 text-slate-400 italic">${cat}</span>`;
-            row.innerHTML = `<button onclick="this.parentElement.remove()" class="text-slate-600">✕</button>${label}<select class="player-sync-dropdown flex-grow" data-selected="${pName}"></select>`;
+            let label = isSpecial ? `<select class="psp-type-select w-24 bg-slate-800 text-xs" onchange="triggerAutoSave()">${SPECIAL_PSPS.map(p => `<option value="${p}" ${specificPsp === p ? 'selected' : ''}>${p}</option>`).join('')}</select>` : `<span class="text-[11px] w-24 text-slate-400 italic">${cat}</span>`;
+            row.innerHTML = `<button onclick="this.parentElement.remove(); triggerAutoSave();" class="text-slate-600">✕</button>${label}<select class="player-sync-dropdown flex-grow" onchange="triggerAutoSave()" data-selected="${pName}"></select>`;
             document.getElementById(`${wId}-${cat}`).appendChild(row);
             updateGlobalPlayers();
         }
 
-        function addSpecialSlot(wId, label = "Rolle", pName = "") {
+        function addSpecialSlot(wId, label = "Role", pName = "") {
             const div = document.createElement('div'); div.className = "bg-slate-800/40 p-3 rounded-xl row-item";
-            div.innerHTML = `<div class="flex justify-between mb-2"><input class="spec-label text-xs font-bold text-purple-300 bg-transparent" value="${label}" onfocus="moveCursorToEnd(this)"><button onclick="this.parentElement.parentElement.remove()" class="text-slate-600">✕</button></div><select class="player-sync-dropdown w-full" data-selected="${pName}"></select>`;
+            div.innerHTML = `<div class="flex justify-between mb-2"><input class="spec-label text-xs font-bold text-purple-300 bg-transparent" value="${label}" oninput="triggerAutoSave()" onfocus="moveCursorToEnd(this)"><button onclick="this.parentElement.parentElement.remove(); triggerAutoSave();" class="text-slate-600">✕</button></div><select class="player-sync-dropdown w-full" onchange="triggerAutoSave()" data-selected="${pName}"></select>`;
             document.getElementById(wId).querySelector('.list').appendChild(div);
             updateGlobalPlayers();
         }
 
         function addAssignRow(wId, label = "Assign", pName = "") {
             const row = document.createElement('div'); row.className = 'flex gap-2 items-center row-item';
-            row.innerHTML = `<button onclick="this.parentElement.remove()" class="text-slate-600">✕</button><input class="assign-label w-24 text-xs font-bold text-emerald-400 bg-transparent" value="${label}" onfocus="moveCursorToEnd(this)"><select class="player-sync-dropdown flex-grow" data-selected="${pName}"></select>`;
+            row.innerHTML = `<button onclick="this.parentElement.remove(); triggerAutoSave();" class="text-slate-600">✕</button><input class="assign-label w-24 text-xs font-bold text-emerald-400 bg-transparent" value="${label}" oninput="triggerAutoSave()" onfocus="moveCursorToEnd(this)"><select class="player-sync-dropdown flex-grow" onchange="triggerAutoSave()" data-selected="${pName}"></select>`;
             document.getElementById(wId).querySelector('.list').appendChild(row);
             updateGlobalPlayers();
         }
 
-        function downloadAsFile() {
-            const raidName = document.getElementById('raidName').value.trim() || "Raid";
-            const data = {
-                raidName: raidName,
+        function collectData() {
+            return {
+                raidName: document.getElementById('raidName').value.trim(),
                 widgets: Array.from(document.querySelectorAll('.builder-card')).map(card => {
                     const type = card.dataset.type;
                     const widget = { type, title: card.querySelector('.widget-title').value, rows: [] };
@@ -177,33 +185,46 @@
                     return widget;
                 })
             };
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'})); a.download = `Raid_${raidName}_Setup.json`; a.click();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('raidArchitect_Save', JSON.stringify(collectData()));
+        }
+
+        function downloadAsFile() {
+            const data = collectData();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}));
+            a.download = `Raid_${data.raidName || 'Setup'}_Setup.json`;
+            a.click();
         }
 
         function loadFromFile(event) {
             const reader = new FileReader();
-            reader.onload = e => {
-                const data = JSON.parse(e.target.result);
-                if(data.raidName) document.getElementById('raidName').value = data.raidName;
-                document.getElementById('col-1').innerHTML = ""; document.getElementById('col-2').innerHTML = "";
-                const targetData = data.widgets || data;
-                targetData.forEach(w => {
-                    const id = addWidget(w.type, w.title);
-                    w.rows.forEach(r => {
-                        if(w.type === 'sp') addSPRow(id, r.spId, r.name);
-                        else if(w.type === 'psp') addPSPRow(id, r.cat, r.isSpecial, r.pName, r.specificPsp);
-                        else if(w.type === 'special') addSpecialSlot(id, r.label, r.pName);
-                        else if(w.type === 'assign') addAssignRow(id, r.label, r.pName);
-                    });
-                });
-                updateGlobalPlayers();
-            };
+            reader.onload = e => renderFromData(JSON.parse(e.target.result));
             reader.readAsText(event.target.files[0]);
         }
 
+        function renderFromData(data) {
+            if(!data) return;
+            if(data.raidName) document.getElementById('raidName').value = data.raidName;
+            document.getElementById('col-1').innerHTML = ""; document.getElementById('col-2').innerHTML = "";
+            const targetData = data.widgets || data;
+            targetData.forEach(w => {
+                const id = addWidget(w.type, w.title);
+                w.rows.forEach(r => {
+                    if(w.type === 'sp') addSPRow(id, r.spId, r.name);
+                    else if(w.type === 'psp') addPSPRow(id, r.cat, r.isSpecial, r.pName, r.specificPsp);
+                    else if(w.type === 'special') addSpecialSlot(id, r.label, r.pName);
+                    else if(w.type === 'assign') addAssignRow(id, r.label, r.pName);
+                });
+            });
+            updateGlobalPlayers();
+        }
+
         function exportToDiscord() {
-            const raidName = document.getElementById('raidName').value.trim() || "Unbenannt";
-            let text = `═══ ⚔️ **RAID ${raidName.toUpperCase()} SETUP** ⚔️ ═══\n\n`;
+            const data = collectData();
+            let text = `═══ ⚔️ **RAID ${(data.raidName || 'Setup').toUpperCase()} SETUP** ⚔️ ═══\n\n`;
             document.querySelectorAll('.builder-card').forEach(card => {
                 text += `🔹 **${card.querySelector('.widget-title').value.toUpperCase()}**\n`;
                 if(card.dataset.type === 'sp') card.querySelectorAll('.row-item').forEach(r => text += `• ${r.querySelector('.sp-select option:checked').text}: ${r.querySelector('.player-name-input').value || "---"}\n`);
@@ -224,7 +245,11 @@
             navigator.clipboard.writeText(text).then(() => alert("Discord Text kopiert!"));
         }
 
-        window.onload = () => { addWidget('sp', 'PLAYER GROUP'); addWidget('psp', 'PSP VERTEILUNG'); };
+        window.onload = () => { 
+            const saved = localStorage.getItem('raidArchitect_Save');
+            if(saved) renderFromData(JSON.parse(saved));
+            else { addWidget('sp', 'PLAYER GROUP'); addWidget('psp', 'PSP VERTEILUNG'); }
+        };
     </script>
 </body>
 </html>
