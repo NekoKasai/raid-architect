@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Raid Architect Pro - UX Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: radial-gradient(circle at top left, #0f172a, #020617); color: #f1f5f9; font-family: 'Inter', sans-serif; min-height: 100vh; }
+        .builder-card { background: rgba(30, 41, 59, 0.4); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 20px; }
+        .widget-title { background: transparent; border: none; font-weight: 900; text-transform: uppercase; outline: none; }
+        select, input[type="text"] { background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+        .sp-icon { width: 38px; height: 38px; border-radius: 8px; background: #1a202c; border: 1px solid #475569; object-fit: contain; }
+        .btn-action { background: #1e293b; border: 1px solid #334155; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-action:hover { background: #334155; }
+        .info-panel { background: rgba(15, 23, 42, 0.8); border-left: 4px solid #3b82f6; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        <div class="flex-grow order-2 lg:order-1">
+            <header class="mb-10 bg-slate-900/80 backdrop-blur-xl p-6 rounded-3xl border border-white/10 flex flex-wrap gap-4 items-center justify-between shadow-2xl sticky top-4 z-[100]">
+                <div class="flex flex-col">
+                    <h1 class="text-xl font-black italic tracking-tighter">RAID <span class="text-blue-500">ARCHITECT</span></h1>
+                    <input type="text" id="raidName" placeholder="Raid Name..." onfocus="moveCursorToEnd(this)" class="mt-2 bg-blue-900/20 border-blue-500/30 text-blue-400 font-bold">
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="addWidget('sp')" class="btn-action text-blue-400 px-3 py-2 rounded-xl font-bold text-xs">+ PLAYER</button>
+                    <button onclick="addWidget('psp')" class="btn-action text-rose-400 px-3 py-2 rounded-xl font-bold text-xs">+ PSP</button>
+                    <button onclick="addWidget('special')" class="btn-action text-purple-400 px-3 py-2 rounded-xl font-bold text-xs">+ SPECIAL</button>
+                    <button onclick="addWidget('assign')" class="btn-action text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs">+ ASSIGN</button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="exportToDiscord()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-black shadow-lg">COPY DISCORD</button>
+                    <button onclick="downloadAsFile()" class="bg-slate-700 p-2 rounded-xl">💾</button>
+                    <button onclick="document.getElementById('fileLoader').click()" class="bg-slate-700 p-2 rounded-xl">📂</button>
+                    <input type="file" id="fileLoader" hidden accept=".json" onchange="loadFromFile(event)">
+                </div>
+            </header>
+
+            <div id="canvas" class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <div id="col-1" class="sortable-list space-y-6 min-h-[300px]"></div>
+                <div id="col-2" class="sortable-list space-y-6 min-h-[300px]"></div>
+            </div>
+        </div>
+
+        <aside class="w-full lg:w-72 order-1 lg:order-2">
+            <div class="info-panel sticky top-28 p-6 rounded-2xl shadow-2xl text-xs">
+                <h3 class="text-blue-400 font-black mb-6 uppercase tracking-widest">📋 Partner Referenz</h3>
+                <div class="space-y-4">
+                    <div><p class="text-blue-400 font-bold">PRIMARY (1)</p><p class="text-slate-400 text-[10px]">Laurena, Chloe, Perti</p></div>
+                    <div><p class="text-rose-400 font-bold">SECONDARY (2)</p><p class="text-slate-400 text-[10px]">Harlequin, Palina, Ducat</p></div>
+                    <div><p class="text-emerald-400 font-bold">ELEMENTAL (3)</p><p class="text-slate-400 text-[10px]">Freya, Amon, Lucifer</p></div>
+                    <div><p class="text-orange-400 font-bold">DAMAGE</p><p class="text-slate-400 text-[10px]">Mad March, Eliza, Test Subject</p></div>
+                    <div><p class="text-purple-400 font-bold italic uppercase">Spezial</p><p class="text-slate-300 italic text-[10px]">Ragnar, Lucy, Dog, Jinn</p></div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // UX Helper: Setzt Cursor ans Ende
+        function moveCursorToEnd(el) {
+            setTimeout(() => {
+                const len = el.value.length;
+                el.setSelectionRange(len, len);
+            }, 1);
+        }
+
+        function getIconUrl(id) { return `https://nosapki.com/images/icons/${id}.png`; }
+
+        const SP_GROUPS = {
+            "⚔️ Schwert": { "Krieger": "901", "Ninja": "902", "Crusader": "909", "Zerk": "910", "Gladi": "2544", "Monk": "2588", "Reaper": "2654", "Renegade": "2706", "Waterfall": "4496", "Dragon": "4862", "Stone": "7138" },
+            "🏹 Bogen": { "Jäger": "903", "Assa": "904", "Destro": "911", "WK": "912", "Cannon": "2545", "Scout": "2589", "DH": "2655", "Engel": "2707", "Sunchaser": "4494", "Blaster": "4860", "Sky-Fog": "7139" },
+            "🪄 Magie": { "Red": "905", "Holy": "906", "Blue": "913", "DG": "914", "Vulkan": "2546", "Gezeiten": "2590", "Seher": "2656", "Erzmagier": "2708", "Voodo": "4497", "Gravity": "4863", "Firestorm": "7140" },
+            "🥊 Kampf": { "Draconic": "4048", "Mistic": "4093", "Wolf": "4126", "DemonWar": "4151", "Flame": "4495", "Hydraulic": "4861", "Thunderer": "7141" }
+        };
+
+        const PSP_CATEGORIES = ["Primary", "Secondary", "Damage", "Elemental"];
+        const SPECIAL_PSPS = ["Ragnar", "Lucy", "Dog", "Jinn"];
+
+        let widgetCount = 0;
+        [document.getElementById('col-1'), document.getElementById('col-2')].forEach(el => {
+            new Sortable(el, { group: 'shared', animation: 150 });
+        });
+
+        function updateGlobalPlayers() {
+            const names = Array.from(document.querySelectorAll('.player-name-input')).map(i => i.value.trim()).filter(v => v !== "");
+            document.querySelectorAll('.player-sync-dropdown').forEach(select => {
+                const current = select.value || select.dataset.selected;
+                select.innerHTML = '<option value="">Spieler...</option>' + names.map(n => `<option value="${n}" ${current === n ? 'selected' : ''}>${n}</option>`).join('');
+            });
+        }
+
+        function addWidget(type, title) {
+            widgetCount++;
+            const col = document.getElementById(widgetCount % 2 === 0 ? 'col-2' : 'col-1');
+            const card = document.createElement('div');
+            card.className = 'builder-card relative mb-6';
+            card.dataset.type = type;
+            card.id = 'w-' + widgetCount;
+            let colorClass = type === 'psp' ? 'text-rose-400' : type === 'assign' ? 'text-emerald-400' : type === 'special' ? 'text-purple-400' : 'text-blue-400';
+            let displayTitle = title || (type === 'sp' ? 'PLAYER GROUP' : type === 'assign' ? 'ASSIGN' : type.toUpperCase());
+            
+            card.innerHTML = `<div class="flex justify-between items-center mb-4"><input class="widget-title ${colorClass}" value="${displayTitle}" onfocus="moveCursorToEnd(this)"><button onclick="this.closest('.builder-card').remove(); updateGlobalPlayers();" class="text-slate-600 hover:text-red-500">✕</button></div>`;
+            
+            if(type === 'sp') card.innerHTML += `<div class="list space-y-3"></div><button onclick="addSPRow('${card.id}')" class="text-[10px] mt-4 text-blue-400 font-bold">+ SPIELER</button>`;
+            else if(type === 'psp') card.innerHTML += `<div class="cats space-y-4"></div>`;
+            else if(type === 'special') card.innerHTML += `<div class="list space-y-2"></div><button onclick="addSpecialSlot('${card.id}')" class="text-[10px] mt-4 text-purple-400 font-bold">+ ROLLE</button>`;
+            else card.innerHTML += `<div class="list space-y-2"></div><button onclick="addAssignRow('${card.id}')" class="text-[10px] mt-4 text-emerald-400 font-bold">+ AUFGABE</button>`;
+            
+            col.appendChild(card);
+            if(type === 'psp') {
+                PSP_CATEGORIES.forEach(c => createPspSubCategory(card.id, c));
+                createPspSubCategory(card.id, "Spezial", true);
+            }
+            return card.id;
+        }
+
+        function createPspSubCategory(cardId, name, isSpecial = false) {
+            const container = document.getElementById(cardId).querySelector('.cats');
+            const div = document.createElement('div');
+            div.className = "bg-black/20 p-3 rounded-xl border border-white/5";
+            div.innerHTML = `<div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase mb-2"><span>${name}</span><button onclick="addPSPRow('${cardId}', '${name}', ${isSpecial})" class="text-blue-400 text-lg">+</button></div><div id="${cardId}-${name}" data-catname="${name}" class="sub-list space-y-2"></div>`;
+            container.appendChild(div);
+        }
+
+        function addSPRow(wId, spId = "901", name = "") {
+            const row = document.createElement('div'); row.className = 'flex gap-3 items-center row-item';
+            let opts = ""; for(let g in SP_GROUPS) { opts += `<optgroup label="${g}">`; for(let n in SP_GROUPS[g]) opts += `<option value="${SP_GROUPS[g][n]}" ${SP_GROUPS[g][n] === spId ? 'selected' : ''}>${n}</option>`; opts += `</optgroup>`; }
+            row.innerHTML = `
+                <button onclick="this.parentElement.remove(); updateGlobalPlayers();" class="text-slate-600">✕</button>
+                <select class="sp-select w-24 text-xs" onchange="const img=this.nextElementSibling; img.src=getIconUrl(this.value);">${opts}</select>
+                <img src="${getIconUrl(spId)}" class="sp-icon" onerror="this.style.opacity='0.3'">
+                <input type="text" class="player-name-input flex-grow" oninput="updateGlobalPlayers()" onfocus="moveCursorToEnd(this)" placeholder="Name" value="${name}">`;
+            document.getElementById(wId).querySelector('.list').appendChild(row);
+            updateGlobalPlayers();
+        }
+
+        function addPSPRow(wId, cat, isSpecial = false, pName = "", specificPsp = "") {
+            const row = document.createElement('div'); row.className = 'flex gap-2 items-center row-item';
+            let label = isSpecial ? `<select class="psp-type-select w-24 bg-slate-800 text-xs">${SPECIAL_PSPS.map(p => `<option value="${p}" ${specificPsp === p ? 'selected' : ''}>${p}</option>`).join('')}</select>` : `<span class="text-[11px] w-24 text-slate-400 italic">${cat}</span>`;
+            row.innerHTML = `<button onclick="this.parentElement.remove()" class="text-slate-600">✕</button>${label}<select class="player-sync-dropdown flex-grow" data-selected="${pName}"></select>`;
+            document.getElementById(`${wId}-${cat}`).appendChild(row);
+            updateGlobalPlayers();
+        }
+
+        function addSpecialSlot(wId, label = "Rolle", pName = "") {
+            const div = document.createElement('div'); div.className = "bg-slate-800/40 p-3 rounded-xl row-item";
+            div.innerHTML = `<div class="flex justify-between mb-2"><input class="spec-label text-xs font-bold text-purple-300 bg-transparent" value="${label}" onfocus="moveCursorToEnd(this)"><button onclick="this.parentElement.parentElement.remove()" class="text-slate-600">✕</button></div><select class="player-sync-dropdown w-full" data-selected="${pName}"></select>`;
+            document.getElementById(wId).querySelector('.list').appendChild(div);
+            updateGlobalPlayers();
+        }
+
+        function addAssignRow(wId, label = "Assign", pName = "") {
+            const row = document.createElement('div'); row.className = 'flex gap-2 items-center row-item';
+            row.innerHTML = `<button onclick="this.parentElement.remove()" class="text-slate-600">✕</button><input class="assign-label w-24 text-xs font-bold text-emerald-400 bg-transparent" value="${label}" onfocus="moveCursorToEnd(this)"><select class="player-sync-dropdown flex-grow" data-selected="${pName}"></select>`;
+            document.getElementById(wId).querySelector('.list').appendChild(row);
+            updateGlobalPlayers();
+        }
+
+        function downloadAsFile() {
+            const raidName = document.getElementById('raidName').value.trim() || "Raid";
+            const data = {
+                raidName: raidName,
+                widgets: Array.from(document.querySelectorAll('.builder-card')).map(card => {
+                    const type = card.dataset.type;
+                    const widget = { type, title: card.querySelector('.widget-title').value, rows: [] };
+                    if(type === 'sp') card.querySelectorAll('.row-item').forEach(r => widget.rows.push({ spId: r.querySelector('.sp-select').value, name: r.querySelector('.player-name-input').value }));
+                    else if(type === 'psp') card.querySelectorAll('.sub-list').forEach(list => {
+                        const cat = list.dataset.catname;
+                        list.querySelectorAll('.row-item').forEach(r => widget.rows.push({ cat, pName: r.querySelector('.player-sync-dropdown').value, specificPsp: r.querySelector('.psp-type-select')?.value || "", isSpecial: !!r.querySelector('.psp-type-select') }));
+                    });
+                    else card.querySelectorAll('.row-item').forEach(r => widget.rows.push({ label: (type === 'special' ? r.querySelector('.spec-label')?.value : r.querySelector('.assign-label')?.value), pName: r.querySelector('select').value }));
+                    return widget;
+                })
+            };
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'})); a.download = `Raid_${raidName}_Setup.json`; a.click();
+        }
+
+        function loadFromFile(event) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const data = JSON.parse(e.target.result);
+                if(data.raidName) document.getElementById('raidName').value = data.raidName;
+                document.getElementById('col-1').innerHTML = ""; document.getElementById('col-2').innerHTML = "";
+                const targetData = data.widgets || data;
+                targetData.forEach(w => {
+                    const id = addWidget(w.type, w.title);
+                    w.rows.forEach(r => {
+                        if(w.type === 'sp') addSPRow(id, r.spId, r.name);
+                        else if(w.type === 'psp') addPSPRow(id, r.cat, r.isSpecial, r.pName, r.specificPsp);
+                        else if(w.type === 'special') addSpecialSlot(id, r.label, r.pName);
+                        else if(w.type === 'assign') addAssignRow(id, r.label, r.pName);
+                    });
+                });
+                updateGlobalPlayers();
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+
+        function exportToDiscord() {
+            const raidName = document.getElementById('raidName').value.trim() || "Unbenannt";
+            let text = `═══ ⚔️ **RAID ${raidName.toUpperCase()} SETUP** ⚔️ ═══\n\n`;
+            document.querySelectorAll('.builder-card').forEach(card => {
+                text += `🔹 **${card.querySelector('.widget-title').value.toUpperCase()}**\n`;
+                if(card.dataset.type === 'sp') card.querySelectorAll('.row-item').forEach(r => text += `• ${r.querySelector('.sp-select option:checked').text}: ${r.querySelector('.player-name-input').value || "---"}\n`);
+                else if(card.dataset.type === 'psp') card.querySelectorAll('.sub-list').forEach(list => {
+                    const catName = list.dataset.catname;
+                    list.querySelectorAll('.row-item').forEach(r => {
+                        const pName = r.querySelector('.player-sync-dropdown').value || "---";
+                        const typeText = r.querySelector('.psp-type-select') ? r.querySelector('.psp-type-select').value : catName;
+                        text += `  └ ${typeText}: ${pName}\n`;
+                    });
+                });
+                else card.querySelectorAll('.row-item').forEach(r => {
+                    const label = card.dataset.type === 'special' ? r.querySelector('.spec-label')?.value : r.querySelector('.assign-label')?.value;
+                    text += `• ${label}: ${r.querySelector('select').value || "---"}\n`;
+                });
+                text += "\n";
+            });
+            navigator.clipboard.writeText(text).then(() => alert("Discord Text kopiert!"));
+        }
+
+        window.onload = () => { addWidget('sp', 'PLAYER GROUP'); addWidget('psp', 'PSP VERTEILUNG'); };
+    </script>
+</body>
+</html>
