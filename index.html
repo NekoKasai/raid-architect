@@ -223,11 +223,14 @@
 function exportToDiscord() {
     const data = collectData();
     const jetzt = new Date();
+    // Nur das Datum ohne Uhrzeit
     const datumString = jetzt.toLocaleDateString('de-DE', { 
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
-    }) + " " + jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    });
 
-    let text = `${datumString}\n`;
+    // Hauptüberschrift + Datum
+    const raidHeader = data.raidName ? `RAID ${data.raidName.toUpperCase()} SETUP` : `RAID SETUP`;
+    let text = `═══  ${raidHeader}  ═══\n${datumString}\n\n`;
     
     document.querySelectorAll('.builder-card').forEach(card => {
         text += `${card.querySelector('.widget-title').value.toUpperCase()}\n`;
