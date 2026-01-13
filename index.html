@@ -220,42 +220,45 @@
             updateGlobalPlayers();
         }
 
-        function exportToDiscord() {
-            const data = collectData();
-            const raidHeader = data.raidName ? `RAID ${data.raidName.toUpperCase()} SETUP` : `RAID SETUP`;
-            let text = `═══  ${raidHeader}  ═══\n\n`;
-            
-            document.querySelectorAll('.builder-card').forEach(card => {
-                text += ` ${card.querySelector('.widget-title').value.toUpperCase()}\n`;
-                
-                if(card.dataset.type === 'sp') {
-                    card.querySelectorAll('.row-item').forEach(r => {
-                        text += `• ${r.querySelector('.sp-select option:checked').text}: ${r.querySelector('.player-name-input').value || "---"}\n`;
-                    });
-                } else if(card.dataset.type === 'psp') {
-                    card.querySelectorAll('.sub-list').forEach(list => {
-                        const catName = list.dataset.catname;
-                        const rows = list.querySelectorAll('.row-item');
-                        if(rows.length > 0) {
-                            text += `  [${catName}]\n`;
-                            rows.forEach(r => {
-                                const pName = r.querySelector('.player-sync-dropdown').value || "---";
-                                const typeLabel = r.querySelector('.psp-type-select') ? r.querySelector('.psp-type-select').value : catName;
-                                text += `  └ ${typeLabel}: ${pName}\n`;
-                            });
-                        }
-                    });
-                } else {
-                    card.querySelectorAll('.row-item').forEach(r => {
-                        const label = card.dataset.type === 'special' ? r.querySelector('.spec-label')?.value : r.querySelector('.assign-label')?.value;
-                        text += `• ${label}: ${r.querySelector('select').value || "---"}\n`;
+function exportToDiscord() {
+    const data = collectData();
+    const jetzt = new Date();
+    const datumString = jetzt.toLocaleDateString('de-DE', { 
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
+    }) + " " + jetzt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+    let text = `${datumString}\n`;
+    
+    document.querySelectorAll('.builder-card').forEach(card => {
+        text += `${card.querySelector('.widget-title').value.toUpperCase()}\n`;
+        
+        if(card.dataset.type === 'sp') {
+            card.querySelectorAll('.row-item').forEach(r => {
+                text += `• ${r.querySelector('.sp-select option:checked').text}: ${r.querySelector('.player-name-input').value || "---"}\n`;
+            });
+        } else if(card.dataset.type === 'psp') {
+            card.querySelectorAll('.sub-list').forEach(list => {
+                const catName = list.dataset.catname;
+                const rows = list.querySelectorAll('.row-item');
+                if(rows.length > 0) {
+                    text += `  [${catName}]\n`;
+                    rows.forEach(r => {
+                        const pName = r.querySelector('.player-sync-dropdown').value || "---";
+                        text += `  └ ${pName}\n`;
                     });
                 }
-                text += "\n";
             });
-            
-            navigator.clipboard.writeText(text).then(() => alert("Discord Text kopiert!"));
+        } else {
+            card.querySelectorAll('.row-item').forEach(r => {
+                const label = card.dataset.type === 'special' ? r.querySelector('.spec-label')?.value : r.querySelector('.assign-label')?.value;
+                text += `• ${label}: ${r.querySelector('select').value || "---"}\n`;
+            });
         }
+        text += "\n";
+    });
+    
+    navigator.clipboard.writeText(text).then(() => alert("Discord Text kopiert!"));
+}
 
         window.onload = () => { 
             const saved = localStorage.getItem('raidArchitect_Save');
@@ -265,3 +268,4 @@
     </script>
 </body>
 </html>
+
